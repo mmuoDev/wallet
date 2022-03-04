@@ -2,7 +2,7 @@ syntax = "proto3";
 package wallet;
 option go_package = "./wallet";
 
-import "google/protobuf/timestamp.proto";
+
 import "google/protobuf/empty.proto";
 
 enum TransactionType {
@@ -14,8 +14,6 @@ message CreateWalletRequest {
     int32 account_id = 1;
     int32 previous_balance = 2;
     int32 current_balance = 3;
-    google.protobuf.Timestamp created_at = 4;
-    google.protobuf.Timestamp updated_at = 5;
 }
 
 message RetrieveWalletRequest {
@@ -24,16 +22,14 @@ message RetrieveWalletRequest {
 
 message UpdateWalletRequest {
     int32 account_id = 1;
-    int32 amount = 2;
-    TransactionType transaction_type = 3;
+    int32 previous_balance = 2;
+    int32 current_balance = 3;
 }
 
 message RetrieveWalletResponse {
     int32 account_id = 1;
     int32 previous_balance = 2;
     int32 current_balance = 3;
-    google.protobuf.Timestamp created_at = 4;
-    google.protobuf.Timestamp updated_at = 5;
 }
 
 service Wallet {

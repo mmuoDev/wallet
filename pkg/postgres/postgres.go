@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	_ "github.com/lib/pq"
 	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/lib/pq"
 	"github.com/pkg/errors"
 )
 
@@ -72,4 +72,34 @@ func (c *Connector) Insert(tableName string, values map[string]interface{}) (int
 		return 0, errors.Wrap(err, "Unable to get last inserted ID")
 	}
 	return id, nil
+}
+
+//Select returns a single row of data
+func (c *Connector) Select(query string, params []interface{}, cols ...interface{}) (interface{}, error) {
+	ctx, cancelfunc := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelfunc()
+	stmt, err := c.db.PrepareContext(ctx, query)
+	if err != nil {
+		return nil, errors.Wrap(err, "Unable to prepare statement")
+	}
+	res := stmt.QueryRow(params...)
+	if err := res.Scan(cols...); err != nil {
+		return nil, errors.Wrap(err, "Unable to fetch row")
+	}
+	return cols, nil
+}
+
+//Update updates a table row
+func (c *Connector) Update(query string, params []interface{}) error {
+	ctx, cancelfunc := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelfunc()
+	stmt, err := c.db.PrepareContext(ctx, query)
+	if err != nil {
+		return errors.Wrap(err, "Unable to prepare statement")
+	}
+	_, upErr := stmt.Exec(params...)
+	if err != nil {
+		return errors.Wrap(upErr, "Unable to update table")
+	}
+	return nil
 }
