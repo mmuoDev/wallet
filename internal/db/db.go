@@ -15,16 +15,8 @@ import (
 )
 
 const (
-	walletTable = "wallet"
 	migrationDirectory = "wallet/internal/db/migration/"
 )
-
-//Wallet represents a row of wallet data
-type Wallet struct {
-	AccountID       int `json:"account_id"`
-	PreviousBalance int `json:"previous_balance"`
-	CurrentBalance  int `json:"current_balance"`
-}
 
 //CreateWalletFunc provides functionality to create wallet
 type CreateWalletFunc func( wallet.CreateWalletRequest) (int64, error)
