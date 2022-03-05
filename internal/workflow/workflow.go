@@ -49,12 +49,8 @@ func RetrieveWallet(retrieveWallet db.RetrieveWalletByAccountIdFunc) RetrieveWal
 		if err != nil {
 			return wallet.RetrieveWalletResponse{}, errors.Wrap(err, "workflow - unable to retrieve wallet")
 		}
-		aID, err := stringToInt(w.AccountID)
-		if err != nil {
-			return wallet.RetrieveWalletResponse{}, errors.Wrap(err, "workflow - unable to convert accountId to int")
-		}
 		res := wallet.RetrieveWalletResponse{
-			AccountId:       int32(aID),
+			AccountId:       int32(req.AccountId),
 			PreviousBalance: int32(w.PreviousBalance),
 			CurrentBalance:  int32(w.CurrentBalance),
 		}

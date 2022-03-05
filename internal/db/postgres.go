@@ -15,9 +15,9 @@ const (
 
 //Wallet represents a row of wallet data
 type Wallet struct {
-	AccountID       string
-	PreviousBalance int
-	CurrentBalance  int
+	AccountID       int `json:"account_id"`
+	PreviousBalance int `json:"previous_balance"`
+	CurrentBalance  int `json:"current_balance"`
 }
 
 //CreateWalletFunc provides functionality to create wallet
@@ -74,8 +74,12 @@ func RetrieveWalletByAccountId(dbConnector pg.Connector) RetrieveWalletByAccount
 		if err != nil {
 			return Wallet{}, errors.Wrap(err, "unable to convert current balance to int")
 		}
+		aId, err := stringToInt(accId)
+		if err != nil {
+			return Wallet{}, errors.Wrap(err, "unable to convert current balance to int")
+		}
 		w := Wallet{
-			AccountID:       accID,
+			AccountID:       aId,
 			PreviousBalance: pb,
 			CurrentBalance:  cb,
 		}

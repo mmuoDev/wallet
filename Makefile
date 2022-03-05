@@ -11,6 +11,10 @@ clean:
 build-local:
 	go build -o $(OUTPUT) main.go
 
+
+test:
+	go test ./...
+
 run: build-local
 	@echo ">> Running application ..."
 	DB_PORT=3306 \

@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
 
 	"github.com/mmuoDev/wallet/gen/wallet"
-	"github.com/mmuoDev/wallet/internal/app"
+	"github.com/mmuoDev/wallet/internal/server"
+	pg "github.com/mmuoDev/wallet/pkg/postgres"
 	"google.golang.org/grpc"
 )
 
@@ -24,9 +26,20 @@ func getListener() net.Listener {
 }
 
 func main() {
-	a := app.New()
+	cfg := pg.Config{
+		Host:     os.Getenv("DB_HOST"),
+		Port:     os.Getenv("DB_PORT"),
+		Username: os.Getenv("DB_USER"),
+		Password: os.Getenv("DB_PASSWORD"),
+		DBName:   os.Getenv("DB_NAME"),
+	}
+	dbConn, err := pg.NewConnector(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	s := server.New(dbConn)
 	grpcServer := grpc.NewServer()
-	wallet.RegisterWalletServer(grpcServer, a)
+	wallet.RegisterWalletServer(grpcServer, s)
 	log.Println(fmt.Sprintf("Starting server on address: %s:%s", host, port))
 	if err := grpcServer.Serve(getListener()); err != nil {
 		log.Fatal("failed to serve: " + err.Error())
