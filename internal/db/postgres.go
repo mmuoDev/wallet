@@ -1,89 +1,59 @@
 package db
 
 import (
-	"fmt"
 	"strconv"
 
-	"github.com/mmuoDev/wallet/gen/wallet"
+	"database/sql"
+
+	"github.com/mmuoDev/core-proto/gen/wallet"
 	pg "github.com/mmuoDev/wallet/pkg/postgres"
 	"github.com/pkg/errors"
 )
 
-const (
-	walletTable = "wallet"
-)
-
-//Wallet represents a row of wallet data
-type Wallet struct {
-	AccountID       int `json:"account_id"`
-	PreviousBalance int `json:"previous_balance"`
-	CurrentBalance  int `json:"current_balance"`
-}
-
-//CreateWalletFunc provides functionality to create wallet
-type CreateWalletFunc func(data map[string]interface{}) error
-
-//RetrieveWalletByAccountIdFunc provides functionality to retrieve a wallet by account id
-type RetrieveWalletByAccountIdFunc func(accID string) (Wallet, error)
-
-//UpdateWalletFunc returns a functionality to update a wallet
-type UpdateWalletFunc func(req wallet.UpdateWalletRequest) error
-
 //CreateWallet creates a wallet on db
 func CreateWallet(dbConnector pg.Connector) CreateWalletFunc {
-	return func(data map[string]interface{}) error {
-		_, err := dbConnector.Insert(walletTable, data)
+	return func(req wallet.CreateWalletRequest) (int64, error) {
+		query := `INSERT INTO wallet (
+			account_id, previous_balance, current_balance
+		) VALUES (
+			$1, $2, $3
+		) RETURNING id`
+		res, err := dbConnector.DB.Exec(query, req.AccountId, req.PreviousBalance, req.CurrentBalance)
 		if err != nil {
-			return errors.Wrap(err, "db - unable to insert record")
+			return 0, errors.Wrap(err, "db - unable to insert record")
 		}
-		return nil
+		id, err := res.LastInsertId()
+		if err != nil {
+			return 0, errors.Wrap(err, "db - unable to retrieve last inserted id")
+		}
+		return id, nil
+
 	}
 }
 
 //UpdateWallet updates a wallet
 func UpdateWallet(dbConnector pg.Connector) UpdateWalletFunc {
 	return func(req wallet.UpdateWalletRequest) error {
-		query := fmt.Sprintf("UPDATE %s SET previous_balance = ?, current_balance = ? WHERE account_id = ?", walletTable)
-		var params []interface{}
-		pp := append(params, req.PreviousBalance, req.CurrentBalance, req.AccountId)
-		if err := dbConnector.Update(query, pp); err != nil {
-			return errors.Wrap(err, "unable to update wallet")
-		}
-		return nil
+		query := `UPDATE wallet SET previous_balance = $1, current_balance = $2 WHERE account_id = $3`
+		_, err := dbConnector.DB.Exec(query, req.PreviousBalance, req.CurrentBalance, req.AccountId)
+		return err
 	}
 }
 
 //RetrieveWalletByAccountId retrieves a wallet by account id
 func RetrieveWalletByAccountId(dbConnector pg.Connector) RetrieveWalletByAccountIdFunc {
-	return func(accID string) (Wallet, error) {
-		accId := "account_id"
-		prevBalance := "previous_balance"
-		curBalance := "current_balance"
-		query := fmt.Sprintf("SELECT %s, %s, %s FROM %s where account_id = ?", accId, prevBalance, curBalance, walletTable)
-		var params []interface{}
-		pp := append(params, accID)
-		_, err := dbConnector.Select(query, pp, &accID, &prevBalance, &curBalance)
-		if err != nil {
-			return Wallet{}, errors.Wrap(err, "no row found")
+	return func(accID string) (wallet.RetrieveWalletResponse, error) {
+		var w wallet.RetrieveWalletResponse
+		query := `SELECT account_id, previous_balance, current_balance FROM wallet where account_id = $1`
+		row := dbConnector.DB.QueryRow(query, accID)
+		switch err := row.Scan(&w.AccountId, &w.PreviousBalance, &w.CurrentBalance); err {
+		case sql.ErrNoRows:
+			return w, errors.New("not found")
+		case nil:
+			return w, nil
+		default:
+			return w, errors.Wrap(err, "error retrieving data")
 		}
-		pb, err := stringToInt(prevBalance)
-		if err != nil {
-			return Wallet{}, errors.Wrap(err, "unable to convert previous balance to int")
-		}
-		cb, err := stringToInt(curBalance)
-		if err != nil {
-			return Wallet{}, errors.Wrap(err, "unable to convert current balance to int")
-		}
-		aId, err := stringToInt(accId)
-		if err != nil {
-			return Wallet{}, errors.Wrap(err, "unable to convert current balance to int")
-		}
-		w := Wallet{
-			AccountID:       aId,
-			PreviousBalance: pb,
-			CurrentBalance:  cb,
-		}
-		return w, nil
 	}
 }
 

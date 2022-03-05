@@ -9,9 +9,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	pb "github.com/mmuoDev/wallet/gen/wallet"
+	pb "github.com/mmuoDev/core-proto/gen/wallet"
 	"github.com/mmuoDev/wallet/internal/server"
-	"github.com/mmuoDev/wallet/internal/db"
 	pg "github.com/mmuoDev/wallet/pkg/postgres"
 	"github.com/stretchr/testify/assert"
 )
@@ -22,22 +21,23 @@ func postgresProvider() *pg.Connector {
 }
 
 func TestCreateWalletServiceWorkAsExpected(t *testing.T) {
-	expectedAccount := int32(926592)
 	isDBInvoked := false
 	mockDB := func(o *server.Option) {
-		o.CreateWallet = func(data map[string]interface{}) error {
+		o.CreateWallet = func(req pb.CreateWalletRequest) (int64, error) {
 			isDBInvoked = true
 			t.Run("Data is as expected", func(t *testing.T) {
-				assert.Equal(t, expectedAccount, data["account_id"])
+				assert.Equal(t, int32(926592), req.AccountId)
+				assert.Equal(t, int32(100), req.PreviousBalance)
+				assert.Equal(t, int32(100), req.CurrentBalance)
 			})
-			return nil
+			return 1, nil
 		}
 	}
 	opts := []server.OptionalArg{
 		mockDB,
 	}
 	ap := server.New(&pg.Connector{}, opts...)
-	req := &pb.CreateWalletRequest{AccountId: 926592, PreviousBalance: 100}
+	req := &pb.CreateWalletRequest{AccountId: 926592, PreviousBalance: 100, CurrentBalance: 100}
 	_, err := ap.CreateWallet(context.Background(), req)
 	if err != nil {
 		t.Fatal(err)
@@ -55,7 +55,7 @@ func TestUpdateWalletServiceWorkAsExpected(t *testing.T) {
 			t.Run("Data is as expected", func(t *testing.T) {
 				assert.Equal(t, req.CurrentBalance, int32(1500))
 			})
-			return nil 
+			return nil
 		}
 	}
 	opts := []server.OptionalArg{
@@ -73,15 +73,15 @@ func TestUpdateWalletServiceWorkAsExpected(t *testing.T) {
 }
 func TestRetrieveWalletServiceWorkAsExpected(t *testing.T) {
 	isDBInvoked := false
-	expectedAccount := int32(926592)
-	var dbRes db.Wallet
+	var dbRes pb.RetrieveWalletResponse
 	fileToStruct(filepath.Join("testdata", "retrieve_wallet_db_response.json"), &dbRes)
 	mockDB := func(o *server.Option) {
-		o.RetrieveWallet = func(accID string) (db.Wallet, error) {
+		o.RetrieveWallet = func(accID string) (pb.RetrieveWalletResponse, error) {
 			isDBInvoked = true
-			return dbRes, nil 
+			return dbRes, nil
 		}
 	}
+
 	opts := []server.OptionalArg{
 		mockDB,
 	}
@@ -92,7 +92,13 @@ func TestRetrieveWalletServiceWorkAsExpected(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Run("Account is as expected", func(t *testing.T) {
-		assert.Equal(t, res.GetAccountId(), expectedAccount)
+		assert.Equal(t, res.GetAccountId(), int32(926592))
+	})
+	t.Run("Previous balance is as expected", func(t *testing.T) {
+		assert.Equal(t, res.GetPreviousBalance(), int32(1000))
+	})
+	t.Run("Current balance is as expected", func(t *testing.T) {
+		assert.Equal(t, res.GetCurrentBalance(), int32(500))
 	})
 	t.Run("DB is invoked", func(t *testing.T) {
 		assert.True(t, isDBInvoked)

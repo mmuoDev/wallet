@@ -3,13 +3,13 @@ package workflow
 import (
 	"strconv"
 
-	"github.com/mmuoDev/wallet/gen/wallet"
+	"github.com/mmuoDev/core-proto/gen/wallet"
 	"github.com/mmuoDev/wallet/internal/db"
 	"github.com/pkg/errors"
 )
 
 //CreateWalletFunc provides a functionality to create a wallet
-type CreateWalletFunc func(req wallet.CreateWalletRequest) error
+type CreateWalletFunc func(req wallet.CreateWalletRequest) (wallet.CreateWalletResponse, error)
 
 //RetrieveWalletFunc provides a functionality to retrieve wallet by account id
 type RetrieveWalletFunc func(req wallet.RetrieveWalletRequest) (wallet.RetrieveWalletResponse, error)
@@ -19,15 +19,12 @@ type UpdateWalletFunc func(req wallet.UpdateWalletRequest) error
 
 //CreateWallet creates a wallet
 func CreateWallet(createWallet db.CreateWalletFunc) CreateWalletFunc {
-	return func(req wallet.CreateWalletRequest) error {
-		data := make(map[string]interface{})
-		data["account_id"] = req.AccountId
-		data["previous_balance"] = req.PreviousBalance
-		data["current_balance"] = req.CurrentBalance
-		if err := createWallet(data); err != nil {
-			return errors.Wrap(err, "workflow - unable to create wallet")
+	return func(req wallet.CreateWalletRequest) (wallet.CreateWalletResponse, error) {
+		lastId, err := createWallet(req)
+		if err != nil {
+			return wallet.CreateWalletResponse{}, errors.Wrap(err, "workflow - unable to create wallet")
 		}
-		return nil
+		return wallet.CreateWalletResponse{Id: lastId}, nil
 	}
 }
 
@@ -49,12 +46,7 @@ func RetrieveWallet(retrieveWallet db.RetrieveWalletByAccountIdFunc) RetrieveWal
 		if err != nil {
 			return wallet.RetrieveWalletResponse{}, errors.Wrap(err, "workflow - unable to retrieve wallet")
 		}
-		res := wallet.RetrieveWalletResponse{
-			AccountId:       int32(req.AccountId),
-			PreviousBalance: int32(w.PreviousBalance),
-			CurrentBalance:  int32(w.CurrentBalance),
-		}
-		return res, nil
+		return w, nil
 	}
 }
 

@@ -3,8 +3,7 @@ package server
 import (
 	"context"
 
-	pb "github.com/mmuoDev/wallet/gen/wallet"
-	w "github.com/mmuoDev/wallet/gen/wallet"
+	pb "github.com/mmuoDev/core-proto/gen/wallet"
 	"github.com/mmuoDev/wallet/internal/db"
 	"github.com/mmuoDev/wallet/internal/workflow"
 	pg "github.com/mmuoDev/wallet/pkg/postgres"
@@ -14,7 +13,7 @@ import (
 //Server represents the wallet's server
 type Server struct {
 	Option Option
-	w.UnimplementedWalletServer
+	pb.UnimplementedWalletServer
 }
 
 //Option represents optional args
@@ -40,12 +39,13 @@ func New(dbConnector *pg.Connector, opts ...OptionalArg) Server {
 }
 
 //CreateWallet implements its grpc method
-func (s Server) CreateWallet(ctx context.Context, in *pb.CreateWalletRequest) (*emptypb.Empty, error) {
+func (s Server) CreateWallet(ctx context.Context, in *pb.CreateWalletRequest) (*pb.CreateWalletResponse, error) {
 	create := workflow.CreateWallet(s.Option.CreateWallet)
-	if err := create(*in); err != nil {
-		return nil, err
+	res, err := create(*in)
+	if err != nil {
+		return &pb.CreateWalletResponse{}, err
 	}
-	return &emptypb.Empty{}, nil
+	return &res, nil
 }
 
 //UpdateWallet implements its grpc method
